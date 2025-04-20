@@ -50,7 +50,7 @@ async function generateCommit() {
   try {
     console.log('Obteniendo el diff de los cambios...');
     const diff = shell.exec('git diff --cached', { silent: true }).stdout;
-console.log('aveeeer:', diff);
+
     if (!diff.trim()) {
       console.log('No hay cambios para commitear.');
       return;
@@ -66,7 +66,7 @@ console.log('aveeeer:', diff);
       console.log('El diff no contiene suficiente información para generar un commit válido.');
     } else {
       console.log('Commit válido generado automáticamente: \n', responseText);
-      // Ejecutar comandos de Git
+
       shell.exec('git add .');
       shell.exec(`git commit -m "${responseText}"`);
       console.log('Commit realizado con éxito.');
@@ -76,5 +76,4 @@ console.log('aveeeer:', diff);
   }
 }
 
-// Main execution
 generateCommit();
