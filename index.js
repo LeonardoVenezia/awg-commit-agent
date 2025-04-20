@@ -1,25 +1,10 @@
 #! /usr/bin/env node
 import 'dotenv/config';
 import { GoogleGenAI } from "@google/genai";
-import readline from 'readline';
 import shell from 'shelljs';
 
 const aiModel = "gemini-1.5-flash";
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// Create readline interface outside the function so it can be reused
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
-function askQuestion(query) {
-  return new Promise(resolve => {
-    rl.question(query, (answer) => {
-      resolve(answer);
-    });
-  });
-}
 
 console.log('\n\n');
 console.log('+++++++++++++++++++++++++++++++++++++++++++++++++++++');
@@ -49,11 +34,11 @@ console.log('\n');
 console.log('+++++++++++++++++++++++++++++++++++++++++++++++++++++');
 console.log('\n');
 
-async function aiResponse(userInput) {
+async function aiResponse(diff) {
   const response = await genAI.models.generateContent({
     model: aiModel,
-    contents: `Como experto en Git y siguiendo las especificaciones de Conventional Commits, analiza el siguiente texto de commit y genera un mensaje de commit válido en inglés plano. Si la información proporcionada es insuficiente para crear un commit lógico respondiedo exactamente invalid input, indica que se requiere información adicional. Evita explicaciones y respuestas especulativas.
-    Texto del commit: "${userInput}"`,
+    contents: `Como experto en Git y siguiendo las especificaciones de Conventional Commits, analiza el siguiente diff de Git y genera un mensaje de commit válido en inglés plano. Si la información proporcionada es insuficiente para crear un commit lógico respondiedo exactamente invalid input, indica que se requiere información adicional. Evita explicaciones y respuestas especulativas.
+    Diff de Git: "${diff}"`,
   }).then(response => response.text);
 
   return response.trim().toLowerCase().includes('invalid input')
@@ -61,53 +46,35 @@ async function aiResponse(userInput) {
     : response;
 }
 
-async function commitReader(isRetry = false) {
+async function generateCommit() {
   try {
-    // Prompt for user input with different messages for initial try vs retry
-    const promptMessage = isRetry
-      ? 'Ingresa los cambios realizados en el commit con mayor detalle: '
-      : 'Ingresa los cambios realizados en el commit: ';
+    console.log('Obteniendo el diff de los cambios...');
+    const diff = shell.exec('git diff --cached', { silent: true }).stdout;
+console.log('aveeeer:', diff);
+    if (!diff.trim()) {
+      console.log('No hay cambios para commitear.');
+      return;
+    }
 
-    const userInput = await askQuestion(promptMessage);
+    console.log('\n------------------------------------------------------------------');
+    console.log(`     Generando conventional commit utilizando ${aiModel}  `);
+    console.log('------------------------------------------------------------------\n');
 
-    console.log('\n------------------------------------------------------------------')
-    console.log(`     Generando conventional commit utilizando ${aiModel}  `)
-    console.log('------------------------------------------------------------------\n')
-
-    const responseText = await aiResponse(userInput);
+    const responseText = await aiResponse(diff);
 
     if (responseText === 'invalid input') {
-      console.log('Descripcion de commit inválida!');
-      // Recursively call the function with retry flag
-      return await commitReader(true);
+      console.log('El diff no contiene suficiente información para generar un commit válido.');
     } else {
-      console.log('Commit válido: \n', responseText);
-      // Execute git commands
-      shell.exec('git status');
-      // Success - close readline and return the response
-      rl.close();
-      return responseText;
+      console.log('Commit válido generado automáticamente: \n', responseText);
+      // Ejecutar comandos de Git
+      shell.exec('git add .');
+      shell.exec(`git commit -m "${responseText}"`);
+      console.log('Commit realizado con éxito.');
     }
-
   } catch (error) {
     console.error('Error:', error);
-    // On error, give option to retry
-    const retryResponse = await askQuestion('¿Deseas intentar nuevamente? (s/n): ');
-    if (retryResponse.toLowerCase() === 's') {
-      return await commitReader(true);
-    } else {
-      rl.close();
-      return null;
-    }
   }
 }
 
 // Main execution
-commitReader().then(result => {
-  if (result === null) {
-    console.log('Proceso terminado por el usuario.');
-  }
-}).catch(error => {
-  console.error('Error fatal:', error);
-  rl.close();
-});
+generateCommit();
