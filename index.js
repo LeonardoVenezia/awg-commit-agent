@@ -37,7 +37,7 @@ console.log('\n');
 async function aiResponse(diff) {
   const response = await genAI.models.generateContent({
     model: aiModel,
-    contents: `Como experto en Git y siguiendo las especificaciones de Conventional Commits, analiza el siguiente diff de Git y genera un mensaje de commit válido en inglés plano. Si la información proporcionada es insuficiente para crear un commit lógico respondiedo exactamente invalid input, indica que se requiere información adicional. Evita explicaciones y respuestas especulativas.
+    contents: `Como experto en Git y siguiendo las especificaciones de Conventional Commits, analiza el siguiente diff de Git y genera un mensaje de commit válido en inglés plano. Evita explicaciones y respuestas especulativas.
     Diff de Git: "${diff}"`,
   }).then(response => response.text);
 
